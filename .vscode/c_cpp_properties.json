@@ -1,0 +1,29 @@
+{
+  "version": 4,
+  "configurations": [
+    {
+      "name": "ESP8266 Thing",
+      "includePath": [
+        "${workspaceFolder}/PropaneScale",
+        "${workspaceFolder}/PropaneScale/**",
+        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/cores/esp8266",
+        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/variants/thing",
+        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/libraries/**",
+        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/tools/sdk/include",
+        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/tools/sdk/lwip2/include",
+        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/tools/sdk/lwip2/builder/glue-lwip",
+        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/tools/sdk/lwip2/builder/glue-esp/lwip-1.4-arduino/include",
+        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/3.1.0-gcc10.3-e5f9fec/xtensa-lx106-elf/include"
+      ],
+      "defines": [
+        "ESP8266",
+        "ARDUINO_ARCH_ESP8266",
+        "ARDUINO_ESP8266_THING"
+      ],
+      "compilerPath": "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/3.1.0-gcc10.3-e5f9fec/bin/xtensa-lx106-elf-g++.exe",
+      "cStandard": "c11",
+      "cppStandard": "c++17",
+      "intelliSenseMode": "gcc-x64"
+    }
+  ]
+}
