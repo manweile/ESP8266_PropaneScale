@@ -3,7 +3,7 @@
 
 #include <pgmspace.h>
 
-// Stored in flash (PROGMEM) to avoid consuming ESP8266's limited RAM.
+// Stored in flash (PROGMEM) to avoid consuming ESP32 RAM.
 // Served via server.send_P(200, "text/html", WEBPAGE).
 
 static const char WEBPAGE[] PROGMEM = R"HTMLEOF(

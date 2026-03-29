@@ -4,7 +4,7 @@ param(
     [string]$Mode,
 
     [string]$SketchPath,
-    [string]$Fqbn = "esp8266:esp8266:thing",
+    [string]$Fqbn = "esp32:esp32:esp32thing",
     [string]$Baudrate = "115200",
     [string]$UploadSpeed = "921600"
 )

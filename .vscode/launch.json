@@ -4,8 +4,8 @@
     {
       "id": "gdbPath",
       "type": "promptString",
-      "description": "xtensa-lx106-elf-gdb executable path",
-      "default": "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/3.1.0-gcc10.3-e5f9fec/bin/xtensa-lx106-elf-gdb.exe"
+      "description": "xtensa-esp32-elf-gdb executable path",
+      "default": "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp32/tools/xtensa-esp-elf-gdb/11.2_20220823/bin/xtensa-esp32-elf-gdb.exe"
     },
     {
       "id": "monitorBaudLaunch",
@@ -21,10 +21,10 @@
   ],
   "configurations": [
     {
-      "name": "JTAG Debug (ESP8266 + ESP-Prog + OpenOCD)",
+      "name": "JTAG Debug (ESP32 + ESP-Prog + OpenOCD)",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/.build/esp8266-thing-debug/PropaneScale.ino.elf",
+      "program": "${workspaceFolder}/.build/esp32-thing-debug/PropaneScale.ino.elf",
       "cwd": "${workspaceFolder}/PropaneScale",
       "MIMode": "gdb",
       "miDebuggerPath": "${input:gdbPath}",
@@ -58,7 +58,7 @@
     {
       "name": "JTAG + Serial Monitor (ESP-Prog)",
       "configurations": [
-        "JTAG Debug (ESP8266 + ESP-Prog + OpenOCD)",
+        "JTAG Debug (ESP32 + ESP-Prog + OpenOCD)",
         "Serial Monitor (ESP-Prog)"
       ],
       "stopAll": true

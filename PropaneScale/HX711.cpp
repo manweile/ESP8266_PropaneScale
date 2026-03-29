@@ -75,7 +75,7 @@ long HX711::readRaw() {
         if (millis() > deadline) {
             return 0L;   // chip not responding — return neutral value
         }
-        yield();   // service ESP8266 WiFi/background tasks while waiting
+        yield();   // service ESP32 WiFi/background tasks while waiting
     }
 
     noInterrupts();           // protect the ~60 µs timing-critical section
@@ -90,7 +90,7 @@ long HX711::readAverage(uint8_t times) {
     long sum = 0;
     for (uint8_t i = 0; i < times; ++i) {
         sum += readRaw();
-        yield();   // allow ESP8266 background processing between samples
+        yield();   // allow ESP32 background processing between samples
     }
     return sum / static_cast<long>(times);
 }

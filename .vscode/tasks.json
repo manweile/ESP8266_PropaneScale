@@ -39,13 +39,13 @@
   ],
   "tasks": [
     {
-      "label": "Arduino: Compile (ESP8266 Thing)",
+      "label": "Arduino: Compile (ESP32 Thing)",
       "type": "shell",
       "command": "arduino-cli",
       "args": [
         "compile",
         "--fqbn",
-        "esp8266:esp8266:thing",
+        "esp32:esp32:esp32thing",
         "${workspaceFolder}/PropaneScale"
       ],
       "group": {
@@ -55,15 +55,15 @@
       "problemMatcher": []
     },
     {
-      "label": "JTAG: Build Debug (ESP8266 Thing)",
+      "label": "JTAG: Build Debug (ESP32 Thing)",
       "type": "shell",
       "command": "arduino-cli",
       "args": [
         "compile",
         "--fqbn",
-        "esp8266:esp8266:thing",
+        "esp32:esp32:esp32thing",
         "--build-path",
-        "${workspaceFolder}/.build/esp8266-thing-debug",
+        "${workspaceFolder}/.build/esp32-thing-debug",
         "--build-property",
         "build.extra_flags=-Og -g3",
         "${workspaceFolder}/PropaneScale"
@@ -78,23 +78,20 @@
         "-s",
         "${input:openocdScriptsDir}",
         "-f",
-        "${workspaceFolder}/.vscode/openocd-esp-prog-esp8266.cfg"
+        "${workspaceFolder}/.vscode/openocd-esp-prog-esp32.cfg"
       ],
       "isBackground": true,
-      "problemMatcher": [
-        {
-          "pattern": [
-            {
-              "regexp": "."
-            }
-          ],
-          "background": {
-            "activeOnStart": true,
-            "beginsPattern": ".",
-            "endsPattern": "Listening on port 3333 for gdb connections"
-          }
+      "problemMatcher": {
+        "owner": "openocd",
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^.*$",
+          "endsPattern": "Listening on port 3333 for gdb connections"
         }
-      ]
+      }
     },
     {
       "label": "JTAG: Stop OpenOCD",
@@ -113,7 +110,7 @@
       "label": "JTAG: Build Debug + Start OpenOCD",
       "dependsOrder": "sequence",
       "dependsOn": [
-        "JTAG: Build Debug (ESP8266 Thing)",
+        "JTAG: Build Debug (ESP32 Thing)",
         "JTAG: Start OpenOCD (ESP-Prog)"
       ],
       "problemMatcher": []
@@ -132,11 +129,11 @@
         "-SketchPath",
         "${workspaceFolder}/PropaneScale",
         "-Fqbn",
-        "esp8266:esp8266:thing",
+        "esp32:esp32:esp32thing",
         "-UploadSpeed",
         "${input:uploadSpeed}"
       ],
-      "dependsOn": "Arduino: Compile (ESP8266 Thing)",
+      "dependsOn": "Arduino: Compile (ESP32 Thing)",
       "problemMatcher": []
     },
     {

@@ -26,10 +26,10 @@
 #define LOAD_CELL_ARRAY_CAPACITY_LBS  88.0f   // 4 x 10 kg ≈ 88.2 lb total
 
 // ============================================================
-// HX711 Pin Definitions  — SparkFun ESP8266 Thing
+// HX711 Pin Definitions  — SparkFun ESP32 Thing
 // ============================================================
 //
-//   HX711 module     SparkFun ESP8266 Thing
+//   HX711 module     SparkFun ESP32 Thing
 //   ─────────────    ──────────────────────
 //   DOUT        ──►  GPIO 12  (J2 header, safe general-purpose IO)
 //   SCK         ──►  GPIO 13  (J2 header, safe general-purpose IO)

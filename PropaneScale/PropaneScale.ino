@@ -1,10 +1,10 @@
 /*
  * PropaneScale.ino
  *
- * ESP8266 Propane Tank Weight Monitor
+ * ESP32 Propane Tank Weight Monitor
  *
  * Hardware
- *   - SparkFun ESP8266 Thing (ESP8266 SoC, 80 MHz, 512 KB SRAM, 4 MB flash)
+ *   - SparkFun ESP32 Thing (ESP32 SoC)
  *   - Avia Semiconductor HX711 24-bit ADC for Weigh Scales
  *   - 4x SparkFun SEN-13329 (10 kg) straight bar load sensors
  *   - SparkFun Load Sensor Combinator (or equivalent wiring) into HX711
@@ -19,8 +19,8 @@
  *   - Serial command interface at 115200 baud (type HELP)
  *
  * Libraries required (install via Arduino Library Manager)
- *   - ESP8266 Arduino core  (Board: "SparkFun ESP8266 Thing")
- *   No third-party libraries needed beyond the ESP8266 core.
+ *   - ESP32 Arduino core  (Board: "SparkFun ESP32 Thing")
+ *   No third-party libraries needed beyond the ESP32 core.
  *
  * First-time setup
  *   1. Edit WIFI_SSID / WIFI_PASSWORD in config.h
@@ -29,9 +29,9 @@
  */
 
 #include <EEPROM.h>
-#include <ESP8266WiFi.h>
-#include <ESP8266WebServer.h>
-#include <ESP8266mDNS.h>
+#include <WiFi.h>
+#include <WebServer.h>
+#include <ESPmDNS.h>
 #include <limits.h>
 #include <math.h>
 
@@ -55,7 +55,7 @@ static void handleApiGuidedCalCancel();
 
 // ── Global objects ────────────────────────────────────────────────────────
 static HX711            scale;
-static ESP8266WebServer server(WEB_SERVER_PORT);
+static WebServer server(WEB_SERVER_PORT);
 
 // ── Runtime state ─────────────────────────────────────────────────────────
 static float         g_calFactor    = DEFAULT_CAL_FACTOR;
@@ -686,7 +686,7 @@ void setup() {
     delay(200);
 
     Serial.println(F("\n========================================"));
-    Serial.println(F("  ESP8266 Propane Scale  v1.0.0"));
+    Serial.println(F("  ESP32 Propane Scale  v1.0.0"));
     Serial.println(F("  SparkFun Thing + HX711 + 4x SEN-13329"));
     Serial.println(F("========================================"));
 
@@ -724,7 +724,6 @@ void setup() {
 // ============================================================
 void loop() {
     server.handleClient();
-    MDNS.update();
     handleSerialCommands();
 
     // Periodic weight reading

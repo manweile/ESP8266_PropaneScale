@@ -2,25 +2,28 @@
   "version": 4,
   "configurations": [
     {
-      "name": "ESP8266 Thing",
+      "name": "ESP32 Thing",
       "includePath": [
         "${workspaceFolder}/PropaneScale",
         "${workspaceFolder}/PropaneScale/**",
-        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/cores/esp8266",
-        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/variants/thing",
-        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/libraries/**",
-        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/tools/sdk/include",
-        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/tools/sdk/lwip2/include",
-        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/tools/sdk/lwip2/builder/glue-lwip",
-        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp8266/hardware/esp8266/3.1.2/tools/sdk/lwip2/builder/glue-esp/lwip-1.4-arduino/include",
-        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/3.1.0-gcc10.3-e5f9fec/xtensa-lx106-elf/include"
+        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp32/hardware/esp32/3.3.4/cores/esp32",
+        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp32/hardware/esp32/3.3.4/variants/esp32thing",
+        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp32/hardware/esp32/3.3.4/libraries/EEPROM/src",
+        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp32/hardware/esp32/3.3.4/libraries/WiFi/src",
+        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp32/hardware/esp32/3.3.4/libraries/WebServer/src",
+        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp32/hardware/esp32/3.3.4/libraries/ESPmDNS/src",
+        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp32/hardware/esp32/3.3.4/libraries/**",
+        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-8410210c-v2/esp32/include/**",
+        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-8410210c-v2/esp32/dio_qspi/include",
+        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-8410210c-v2/esp32/qio_qspi/include",
+        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp32/tools/esp-x32/2507/xtensa-esp-elf/include"
       ],
       "defines": [
-        "ESP8266",
-        "ARDUINO_ARCH_ESP8266",
-        "ARDUINO_ESP8266_THING"
+        "ESP32",
+        "ARDUINO_ARCH_ESP32",
+        "ARDUINO_ESP32_THING"
       ],
-      "compilerPath": "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/3.1.0-gcc10.3-e5f9fec/bin/xtensa-lx106-elf-g++.exe",
+      "compilerPath": "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp32/tools/esp-x32/2507/bin/xtensa-esp32-elf-g++.exe",
       "cStandard": "c11",
       "cppStandard": "c++17",
       "intelliSenseMode": "gcc-x64"
