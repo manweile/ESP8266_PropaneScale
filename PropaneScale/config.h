@@ -16,7 +16,7 @@
 // Scale hardware configuration
 //
 // This project is configured for a 4-sensor platform:
-//   - 4x SparkFun SEN-13329 (10 kg) straight bar load sensors
+//   - 4x SparkFun SEN-13329 (10 kg) straight bar load sensors or 4x Sparkfun SEN-10245 (50 kg) load cells
 //   - 1x SparkFun Load Sensor Combinator (or equivalent wiring)
 //   - 1x HX711 load-cell amplifier/ADC
 //
@@ -31,8 +31,8 @@
 //
 //   HX711 module     SparkFun ESP32 Thing
 //   ─────────────    ──────────────────────
-//   DOUT        ──►  GPIO 12  (J2 header, safe general-purpose IO)
-//   SCK         ──►  GPIO 13  (J2 header, safe general-purpose IO)
+//   DOUT        ──►  GPIO 4  (J2 header, safe general-purpose IO)
+//   SCK         ──►  GPIO 16  (J2 header, safe general-purpose IO)
 //   VCC         ──►  3.3 V
 //   GND         ──►  GND
 //
@@ -40,8 +40,8 @@
 //   Red   → E+    Black → E-    White → A+    Green → A-
 //
 // ============================================================
-#define HX711_DOUT_PIN    12   // GPIO12 — data output from HX711
-#define HX711_SCK_PIN     13   // GPIO13 — clock input  to  HX711
+#define HX711_DOUT_PIN    4   // GPIO4 — data output from HX711
+#define HX711_SCK_PIN     16   // GPIO16 — clock input  to  HX711
 
 // ============================================================
 // Propane tank configuration  (standard 20-lb BBQ cylinder)
