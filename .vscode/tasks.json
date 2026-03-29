@@ -1,0 +1,174 @@
+{
+  "version": "2.0.0",
+  "inputs": [
+    {
+      "id": "openocdPath",
+      "type": "promptString",
+      "description": "OpenOCD executable path",
+      "default": "openocd"
+    },
+    {
+      "id": "openocdScriptsDir",
+      "type": "promptString",
+      "description": "OpenOCD scripts directory (contains interface/ and target/)",
+      "default": "C:/Espressif/tools/openocd-esp32/share/openocd/scripts"
+    },
+    {
+      "id": "uploadSpeed",
+      "type": "pickString",
+      "description": "ESP-Prog upload baudrate",
+      "options": [
+        "921600",
+        "460800",
+        "230400",
+        "115200"
+      ],
+      "default": "921600"
+    },
+    {
+      "id": "monitorBaud",
+      "type": "pickString",
+      "description": "Serial monitor baudrate",
+      "options": [
+        "115200",
+        "74880",
+        "9600"
+      ],
+      "default": "115200"
+    }
+  ],
+  "tasks": [
+    {
+      "label": "Arduino: Compile (ESP8266 Thing)",
+      "type": "shell",
+      "command": "arduino-cli",
+      "args": [
+        "compile",
+        "--fqbn",
+        "esp8266:esp8266:thing",
+        "${workspaceFolder}/PropaneScale"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "JTAG: Build Debug (ESP8266 Thing)",
+      "type": "shell",
+      "command": "arduino-cli",
+      "args": [
+        "compile",
+        "--fqbn",
+        "esp8266:esp8266:thing",
+        "--build-path",
+        "${workspaceFolder}/.build/esp8266-thing-debug",
+        "--build-property",
+        "build.extra_flags=-Og -g3",
+        "${workspaceFolder}/PropaneScale"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "JTAG: Start OpenOCD (ESP-Prog)",
+      "type": "shell",
+      "command": "${input:openocdPath}",
+      "args": [
+        "-s",
+        "${input:openocdScriptsDir}",
+        "-f",
+        "${workspaceFolder}/.vscode/openocd-esp-prog-esp8266.cfg"
+      ],
+      "isBackground": true,
+      "problemMatcher": [
+        {
+          "pattern": [
+            {
+              "regexp": "."
+            }
+          ],
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": ".",
+            "endsPattern": "Listening on port 3333 for gdb connections"
+          }
+        }
+      ]
+    },
+    {
+      "label": "JTAG: Stop OpenOCD",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "Get-Process openocd -ErrorAction SilentlyContinue | Stop-Process -Force"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "JTAG: Build Debug + Start OpenOCD",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "JTAG: Build Debug (ESP8266 Thing)",
+        "JTAG: Start OpenOCD (ESP-Prog)"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Arduino: Upload (ESP-Prog)",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/.vscode/arduino-cli-auto.ps1",
+        "upload",
+        "-SketchPath",
+        "${workspaceFolder}/PropaneScale",
+        "-Fqbn",
+        "esp8266:esp8266:thing",
+        "-UploadSpeed",
+        "${input:uploadSpeed}"
+      ],
+      "dependsOn": "Arduino: Compile (ESP8266 Thing)",
+      "problemMatcher": []
+    },
+    {
+      "label": "Arduino: Monitor (ESP-Prog)",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/.vscode/arduino-cli-auto.ps1",
+        "monitor",
+        "-Baudrate",
+        "${input:monitorBaud}"
+      ],
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Arduino: Detect Port (ESP-Prog)",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/.vscode/arduino-cli-auto.ps1",
+        "detect"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}

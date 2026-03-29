@@ -53,6 +53,11 @@ static const char WEBPAGE[] PROGMEM = R"HTMLEOF(
     border-radius:8px;background:#0f3460;color:#eee;font-size:1em;
     text-align:center;margin-bottom:8px}
   #calPanel input::placeholder{color:#666}
+  .guide-box{margin-top:10px;padding:10px;border-radius:8px;background:#0f3460}
+  .guide-hint{font-size:.82em;color:#9db3c7;margin-bottom:8px;line-height:1.35}
+  .guide-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .btn-guide{background:#ffd166;color:#1a1a2e}
+  .btn-stop{background:#ef476f;color:#fff}
   .msg{font-size:.85em;text-align:center;min-height:1.2em;margin-top:4px}
   .msg.ok{color:#4caf50}.msg.err{color:#f44336}
 </style>
@@ -94,6 +99,14 @@ static const char WEBPAGE[] PROGMEM = R"HTMLEOF(
     <input id="knownWt" type="number" step="0.1" min="0.01"
            placeholder="Known weight on scale (lbs)">
     <button class="btn btn-cal" onclick="doCalibrate()">Apply Calibration</button>
+    <div class="guide-box">
+      <div class="guide-hint" id="guidedHint">Guided calibration runs in two steps: empty platform, then known weight.</div>
+      <div class="guide-row">
+        <button class="btn btn-guide" onclick="guidedStart()">Start Guided</button>
+        <button class="btn btn-guide" onclick="guidedNext()">Continue</button>
+      </div>
+      <button class="btn btn-stop" onclick="guidedCancel()">Cancel Guided</button>
+    </div>
   </div>
   <div class="msg" id="ctrlMsg"></div>
 </div>
@@ -171,6 +184,49 @@ function doCalibrate() {
       }
     })
     .catch(function(){ showMsg('ctrlMsg', 'Calibration request failed', true); });
+}
+
+function setGuidedHint(txt) {
+  document.getElementById('guidedHint').textContent = txt;
+}
+
+function guidedStart() {
+  var w = parseFloat(document.getElementById('knownWt').value);
+  if (!w || w <= 0) { showMsg('ctrlMsg', 'Enter a valid weight', true); return; }
+  showMsg('ctrlMsg', 'Starting guided calibration...', false);
+  fetch('/api/guidedcal/start?weight=' + w, { method: 'POST' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      showMsg('ctrlMsg', d.message || 'Guided calibration started', !d.success);
+      if (d.success) setGuidedHint('Step ' + d.step + ': ' + (d.prompt || 'Continue guided calibration'));
+    })
+    .catch(function(){ showMsg('ctrlMsg', 'Guided start failed', true); });
+}
+
+function guidedNext() {
+  showMsg('ctrlMsg', 'Running guided step...', false);
+  fetch('/api/guidedcal/next', { method: 'POST' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      showMsg('ctrlMsg', d.message || (d.success ? 'Step complete' : 'Step failed'), !d.success);
+      if (!d.success) return;
+      if (d.active) {
+        setGuidedHint('Step ' + d.step + ': ' + (d.prompt || 'Continue guided calibration'));
+      } else {
+        setGuidedHint('Guided calibration completed. Verification: ' + (d.verify_lbs || 0).toFixed(3) + ' lbs');
+      }
+    })
+    .catch(function(){ showMsg('ctrlMsg', 'Guided step failed', true); });
+}
+
+function guidedCancel() {
+  fetch('/api/guidedcal/cancel', { method: 'POST' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      showMsg('ctrlMsg', d.message || 'Guided calibration cancelled', !d.success);
+      setGuidedHint('Guided calibration runs in two steps: empty platform, then known weight.');
+    })
+    .catch(function(){ showMsg('ctrlMsg', 'Cancel request failed', true); });
 }
 
 // ── Start ────────────────────────────────────────────────────────────────

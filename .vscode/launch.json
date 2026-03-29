@@ -1,0 +1,67 @@
+{
+  "version": "0.2.0",
+  "inputs": [
+    {
+      "id": "gdbPath",
+      "type": "promptString",
+      "description": "xtensa-lx106-elf-gdb executable path",
+      "default": "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/3.1.0-gcc10.3-e5f9fec/bin/xtensa-lx106-elf-gdb.exe"
+    },
+    {
+      "id": "monitorBaudLaunch",
+      "type": "pickString",
+      "description": "Serial monitor baudrate for compound debug",
+      "options": [
+        "115200",
+        "74880",
+        "9600"
+      ],
+      "default": "115200"
+    }
+  ],
+  "configurations": [
+    {
+      "name": "JTAG Debug (ESP8266 + ESP-Prog + OpenOCD)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/.build/esp8266-thing-debug/PropaneScale.ino.elf",
+      "cwd": "${workspaceFolder}/PropaneScale",
+      "MIMode": "gdb",
+      "miDebuggerPath": "${input:gdbPath}",
+      "miDebuggerServerAddress": "localhost:3333",
+      "stopAtEntry": true,
+      "externalConsole": false,
+      "preLaunchTask": "JTAG: Build Debug + Start OpenOCD",
+      "postDebugTask": "JTAG: Stop OpenOCD",
+      "setupCommands": [
+        {
+          "description": "Enable GDB pretty printing",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        },
+        {
+          "description": "Reset and halt target",
+          "text": "monitor reset halt",
+          "ignoreFailures": true
+        }
+      ]
+    },
+    {
+      "name": "Serial Monitor (ESP-Prog)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"${workspaceFolder}/.vscode/arduino-cli-auto.ps1\" monitor -Baudrate ${input:monitorBaudLaunch}",
+      "cwd": "${workspaceFolder}"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "JTAG + Serial Monitor (ESP-Prog)",
+      "configurations": [
+        "JTAG Debug (ESP8266 + ESP-Prog + OpenOCD)",
+        "Serial Monitor (ESP-Prog)"
+      ],
+      "stopAll": true
+    }
+  ]
+}

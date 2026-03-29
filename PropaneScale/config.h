@@ -13,6 +13,19 @@
 #define AP_PASSWORD       "propane123"  // minimum 8 characters for WPA2
 
 // ============================================================
+// Scale hardware configuration
+//
+// This project is configured for a 4-sensor platform:
+//   - 4x SparkFun SEN-13329 (10 kg) straight bar load sensors
+//   - 1x SparkFun Load Sensor Combinator (or equivalent wiring)
+//   - 1x HX711 load-cell amplifier/ADC
+//
+// The combinator output is treated as one full Wheatstone bridge by HX711.
+// ============================================================
+#define LOAD_CELL_COUNT               4U
+#define LOAD_CELL_ARRAY_CAPACITY_LBS  88.0f   // 4 x 10 kg ≈ 88.2 lb total
+
+// ============================================================
 // HX711 Pin Definitions  — SparkFun ESP8266 Thing
 // ============================================================
 //
@@ -23,7 +36,7 @@
 //   VCC         ──►  3.3 V
 //   GND         ──►  GND
 //
-//   Load cell colour convention (typical):
+//   Combinator/HX711 colour convention (typical):
 //   Red   → E+    Black → E-    White → A+    Green → A-
 //
 // ============================================================
