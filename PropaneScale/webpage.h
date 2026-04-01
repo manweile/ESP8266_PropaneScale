@@ -3,8 +3,11 @@
 
 #include <pgmspace.h>
 
-// Stored in flash (PROGMEM) to avoid consuming ESP32 RAM.
-// Served via server.send_P(200, "text/html", WEBPAGE).
+/**
+ * @brief Embedded HTML/JS/CSS web UI served by the firmware.
+ * @details The page content is stored in PROGMEM to reduce RAM usage and is
+ * served via server.send_P(200, "text/html", WEBPAGE).
+ */
 
 static const char WEBPAGE[] PROGMEM = R"HTMLEOF(
 <!DOCTYPE html>
@@ -113,14 +116,35 @@ static const char WEBPAGE[] PROGMEM = R"HTMLEOF(
 
 <script>
 // ── Helpers ──────────────────────────────────────────────────────────────
+/**
+ * @brief Returns gauge color based on propane percentage.
+ * @param {number} pct Percentage value in [0,100].
+ * @return {string} Hex color string for the gauge fill.
+ * @exception {none} No exceptions are intentionally thrown.
+ */
 function levelColor(pct) {
   if (pct > 50) return '#4caf50';   // green
   if (pct > 20) return '#ff9800';   // orange
   return '#f44336';                 // red
 }
 
+/**
+ * @brief Sets text content for a DOM element by id.
+ * @param {string} id Target element id.
+ * @param {string} val Text value to apply.
+ * @return {undefined} No return value.
+ * @exception {none} No exceptions are intentionally thrown.
+ */
 function setText(id, val) { document.getElementById(id).textContent = val; }
 
+/**
+ * @brief Shows control-panel status message.
+ * @param {string} id Message element id.
+ * @param {string} text Message text to display.
+ * @param {boolean} isErr True for error style, false for success style.
+ * @return {undefined} No return value.
+ * @exception {none} No exceptions are intentionally thrown.
+ */
 function showMsg(id, text, isErr) {
   var el = document.getElementById(id);
   el.textContent = text;
@@ -128,6 +152,12 @@ function showMsg(id, text, isErr) {
 }
 
 // ── Data polling ─────────────────────────────────────────────────────────
+/**
+ * @brief Applies API telemetry data to UI widgets.
+ * @param {object} d Latest API payload from /api/data.
+ * @return {undefined} No return value.
+ * @exception {none} No exceptions are intentionally thrown.
+ */
 function updateUI(d) {
   setText('wVal', d.weight_lbs.toFixed(2));
   var pct = Math.min(100, Math.max(0, d.propane_pct));
@@ -142,6 +172,11 @@ function updateUI(d) {
   el.className = 'status ok';
 }
 
+/**
+ * @brief Fetches telemetry from backend and refreshes UI.
+ * @return {undefined} No return value.
+ * @exception {none} Network errors are handled in the promise catch branch.
+ */
 function fetchData() {
   fetch('/api/data')
     .then(function(r){ return r.json(); })
@@ -154,6 +189,11 @@ function fetchData() {
 }
 
 // ── Tare ─────────────────────────────────────────────────────────────────
+/**
+ * @brief Sends tare request to backend.
+ * @return {undefined} No return value.
+ * @exception {none} Network/request failures are handled in the catch branch.
+ */
 function doTare() {
   showMsg('ctrlMsg', 'Taring\u2026', false);
   fetch('/api/tare', { method: 'POST' })
@@ -165,11 +205,21 @@ function doTare() {
 }
 
 // ── Calibration ─────────────────────────────────────────────────────────
+/**
+ * @brief Toggles calibration panel visibility.
+ * @return {undefined} No return value.
+ * @exception {none} No exceptions are intentionally thrown.
+ */
 function toggleCal() {
   var p = document.getElementById('calPanel');
   p.style.display = p.style.display === 'block' ? 'none' : 'block';
 }
 
+/**
+ * @brief Sends known-weight calibration request.
+ * @return {undefined} No return value.
+ * @exception {none} Validation and network failures are reported via UI message.
+ */
 function doCalibrate() {
   var w = parseFloat(document.getElementById('knownWt').value);
   if (!w || w <= 0) { showMsg('ctrlMsg', 'Enter a valid weight', true); return; }
@@ -186,10 +236,21 @@ function doCalibrate() {
     .catch(function(){ showMsg('ctrlMsg', 'Calibration request failed', true); });
 }
 
+/**
+ * @brief Updates guided calibration instruction text.
+ * @param {string} txt Instruction message to display.
+ * @return {undefined} No return value.
+ * @exception {none} No exceptions are intentionally thrown.
+ */
 function setGuidedHint(txt) {
   document.getElementById('guidedHint').textContent = txt;
 }
 
+/**
+ * @brief Starts guided calibration flow on backend.
+ * @return {undefined} No return value.
+ * @exception {none} Validation and network failures are handled via UI status.
+ */
 function guidedStart() {
   var w = parseFloat(document.getElementById('knownWt').value);
   if (!w || w <= 0) { showMsg('ctrlMsg', 'Enter a valid weight', true); return; }
@@ -203,6 +264,11 @@ function guidedStart() {
     .catch(function(){ showMsg('ctrlMsg', 'Guided start failed', true); });
 }
 
+/**
+ * @brief Advances guided calibration to the next step.
+ * @return {undefined} No return value.
+ * @exception {none} Backend/network failures are handled via UI status.
+ */
 function guidedNext() {
   showMsg('ctrlMsg', 'Running guided step...', false);
   fetch('/api/guidedcal/next', { method: 'POST' })
@@ -219,6 +285,11 @@ function guidedNext() {
     .catch(function(){ showMsg('ctrlMsg', 'Guided step failed', true); });
 }
 
+/**
+ * @brief Cancels guided calibration flow.
+ * @return {undefined} No return value.
+ * @exception {none} Network/request failures are handled in the catch branch.
+ */
 function guidedCancel() {
   fetch('/api/guidedcal/cancel', { method: 'POST' })
     .then(function(r){ return r.json(); })

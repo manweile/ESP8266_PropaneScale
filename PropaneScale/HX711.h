@@ -3,81 +3,135 @@
 
 #include <Arduino.h>
 
-// ---------------------------------------------------------------------------
-// Channel and gain selection
-//
-// The number of *extra* SCK pulses sent after the 24 data bits determines
-// the channel and gain used for the NEXT conversion:
-//
-//   25 total pulses → Channel A, Gain 128  (±20 mV input range)
-//   26 total pulses → Channel B, Gain 32   (±80 mV input range)
-//   27 total pulses → Channel A, Gain 64   (±40 mV input range)
-//
-// For a standard single load-cell scale, use GAIN_A_128 (default).
-// ---------------------------------------------------------------------------
+/**
+ * @brief HX711 channel and gain selection.
+ * @details The number of extra SCK pulses sent after the 24 data bits
+ * determines the channel and gain used for the next conversion:
+ * 25 total pulses for Channel A gain 128, 26 for Channel B gain 32,
+ * and 27 for Channel A gain 64.
+ */
 enum HX711Gain : uint8_t {
+    // For a standard single load cell scale, use GAIN_A_128 (default) for best resolution.
     GAIN_A_128 = 1,   // 25 total pulses — Channel A, Gain 128
     GAIN_B_32  = 2,   // 26 total pulses — Channel B, Gain 32
     GAIN_A_64  = 3    // 27 total pulses — Channel A, Gain 64
 };
 
-// ---------------------------------------------------------------------------
-// HX711 driver class
-//
-// Usage:
-//   HX711 scale;
-//   scale.begin(DOUT_PIN, SCK_PIN);
-//   scale.tare();                       // zero with nothing on scale
-//   scale.setScale(cal_factor);         // loaded from EEPROM or calibration
-//   float weight = scale.getUnits(4);   // average of 4 readings
-// ---------------------------------------------------------------------------
+/**
+ * @brief HX711 ADC driver for load-cell measurements.
+ * @details Provides initialization, raw and averaged sampling, tare/scale
+ * calibration helpers, gain selection, and power control.
+ */
 class HX711 {
 public:
+    /**
+     * @brief Constructs an HX711 driver instance.
+     */
     HX711();
 
-    // Configure GPIO and send one dummy read to programme the gain register.
+    /**
+     * @brief Initializes GPIO pins and applies gain selection.
+     * @details Configures DOUT as input and SCK as output, then performs a
+     * dummy conversion to latch the selected gain/channel for subsequent reads.
+     * @param[in] {uint8_t} dout HX711 DOUT pin.
+     * @param[in] {uint8_t} sck HX711 SCK pin.
+     * @param[in] {HX711Gain} gain Channel/gain setting to apply.
+     */
     void   begin(uint8_t dout, uint8_t sck, HX711Gain gain = GAIN_A_128);
 
-    // Returns true when DOUT is LOW (conversion complete and data ready).
+    /**
+     * @brief Checks whether conversion data is ready.
+     * @return {bool} True when DOUT is LOW, otherwise false.
+     */
     bool   isReady() const;
 
-    // Read one raw 24-bit two's-complement sample.
-    // Blocks until the chip is ready or 1-second timeout elapses.
+    /**
+     * @brief Reads a single raw 24-bit sample.
+     * @details Blocks until the HX711 is ready or timeout is reached.
+     * @return {long} Signed raw ADC value, or LONG_MIN on timeout.
+     */
     long   readRaw();
 
-    // Blocking average of 'times' successive raw readings.
+    /**
+     * @brief Averages multiple raw readings.
+     * @param[in] {uint8_t} times Number of readings to average.
+     * @return {long} Averaged raw value, or LONG_MIN if no valid samples.
+     */
     long   readAverage(uint8_t times = 10);
 
-    // Weighted result in user units: (average_raw − offset) / scale
+    /**
+     * @brief Converts averaged raw readings into user units.
+     * @details Uses the relation (average_raw - offset) / scale.
+     * @param[in] {uint8_t} times Number of readings to average.
+     * @return {double} Scaled value in user-defined units.
+     */
     double getUnits(uint8_t times = 1);
 
-    // Set the tare offset to the current average reading.
+    /**
+     * @brief Sets tare offset from the current average reading.
+     * @param[in] {uint8_t} times Number of readings to average for tare.
+     */
     void   tare(uint8_t times = 10);
 
-    // Calibration scale factor: raw ADC counts per user unit (e.g. per lb).
+    /**
+     * @brief Sets calibration scale factor.
+     * @param[in] {float} scale Raw ADC counts per user unit.
+     */
     void   setScale(float scale);
+
+    /**
+     * @brief Gets current calibration scale factor.
+     * @return {float} Raw ADC counts per user unit.
+     */
     float  getScale()  const;
 
-    // Tare offset in raw ADC counts.
+    /**
+     * @brief Sets tare offset in raw ADC counts.
+     * @param[in] {long} offset Tare offset value.
+     */
     void   setOffset(long offset);
+
+    /**
+     * @brief Gets tare offset in raw ADC counts.
+     * @return {long} Current tare offset.
+     */
     long   getOffset() const;
 
-    // Change channel / gain; issues one dummy read to apply the new setting.
+    /**
+     * @brief Changes HX711 channel/gain selection.
+     * @details Applies selection by issuing a dummy read cycle.
+     * @param[in] {HX711Gain} gain Channel/gain to select.
+     */
     void   setGain(HX711Gain gain);
 
-    // Power management (datasheet section 3.4)
-    void   powerDown();   // Hold SCK HIGH for >60 µs to enter power-down
-    void   powerUp();     // Pull SCK LOW; waits ~400 ms for first conversion
+    /**
+     * @brief Puts HX711 into low-power mode.
+     */
+    void   powerDown();
+
+    /**
+     * @brief Wakes HX711 from low-power mode.
+     */
+    void   powerUp();
 
 private:
+    /** @brief HX711 DOUT pin number. */
     uint8_t _dout;
+    /** @brief HX711 SCK pin number. */
     uint8_t _sck;
-    uint8_t _gainPulses;  // extra SCK pulses after 24 data bits (1, 2, or 3)
+    /** @brief Extra SCK pulses after 24 data bits (1, 2, or 3). */
+    uint8_t _gainPulses;
+    /** @brief Tare offset in raw ADC counts. */
     long    _offset;
+    /** @brief Calibration scale factor in counts per user unit. */
     float   _scale;
 
-    // Shifts in 24 data bits then sends gain-selection pulses.
-    // MUST be called with interrupts disabled.
+    /**
+     * @brief Reads one 24-bit sample and clocks gain pulses.
+     * @details Must be called with interrupts disabled to preserve strict
+     * HX711 timing requirements.
+     * @return {long} Sign-extended 24-bit raw sample.
+     */
     long    _shiftIn();
 };
 

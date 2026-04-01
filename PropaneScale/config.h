@@ -4,8 +4,8 @@
 // ============================================================
 // WiFi — Station mode credentials
 // ============================================================
-#define WIFI_SSID         "YOUR_WIFI_SSID"
-#define WIFI_PASSWORD     "YOUR_WIFI_PASSWORD"
+#define WIFI_SSID         "Propane_Scale"
+#define WIFI_PASSWORD     "propane123"
 #define WIFI_TIMEOUT_MS   30000UL   // 30 s before falling back to AP mode
 
 // Access-Point fallback (when WIFI_SSID is unreachable)
@@ -79,5 +79,7 @@
 // procedure before use; see README for instructions)
 // ============================================================
 #define DEFAULT_CAL_FACTOR  2000.0f   // raw counts per lb (load-cell dependent)
+#define CAL_MIN_DELTA_FLOOR_COUNTS  40L    // absolute lower bound for adaptive min delta
+#define CAL_NOISE_THRESHOLD_MULTIPLIER 6.0f // min delta = max(floor, noiseStd * multiplier)
 
 #endif // CONFIG_H
