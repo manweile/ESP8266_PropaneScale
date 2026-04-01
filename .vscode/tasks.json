@@ -137,6 +137,27 @@
       "problemMatcher": []
     },
     {
+      "label": "Arduino: Upload (USB)",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/.vscode/arduino-cli-auto.ps1",
+        "upload-usb",
+        "-SketchPath",
+        "${workspaceFolder}/PropaneScale",
+        "-Fqbn",
+        "esp32:esp32:esp32thing",
+        "-UploadSpeed",
+        "${input:uploadSpeed}"
+      ],
+      "dependsOn": "Arduino: Compile (ESP32 Thing)",
+      "problemMatcher": []
+    },
+    {
       "label": "Arduino: Monitor (ESP-Prog)",
       "type": "shell",
       "command": "powershell",
@@ -151,6 +172,33 @@
         "${input:monitorBaud}"
       ],
       "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Arduino: Monitor (USB)",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/.vscode/arduino-cli-auto.ps1",
+        "monitor-usb",
+        "-Baudrate",
+        "${input:monitorBaud}"
+      ],
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Arduino: Compile + Upload + Monitor (USB)",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "Arduino: Compile (ESP32 Thing)",
+        "Arduino: Upload (USB)",
+        "Arduino: Monitor (USB)"
+      ],
       "problemMatcher": []
     },
     {
