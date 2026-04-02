@@ -44,6 +44,8 @@
       "command": "arduino-cli",
       "args": [
         "compile",
+        "--clean",
+        "-v",
         "--fqbn",
         "esp32:esp32:esp32thing",
         "${workspaceFolder}/PropaneScale"
@@ -60,6 +62,8 @@
       "command": "arduino-cli",
       "args": [
         "compile",
+        "--clean",
+        "-v",
         "--fqbn",
         "esp32:esp32:esp32thing",
         "--build-path",
