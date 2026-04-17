@@ -9,16 +9,19 @@
         "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp32/hardware/esp32/3.3.4/cores/esp32",
         "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp32/hardware/esp32/3.3.4/variants/esp32thing",
         "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp32/hardware/esp32/3.3.4/libraries/EEPROM/src",
-        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp32/hardware/esp32/3.3.4/libraries/WiFi/src",
-        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp32/hardware/esp32/3.3.4/libraries/WebServer/src",
         "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp32/hardware/esp32/3.3.4/libraries/ESPmDNS/src",
-        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp32/hardware/esp32/3.3.4/libraries/**",
-        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-8410210c-v2/esp32/include/**",
+        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp32/hardware/esp32/3.3.4/libraries/FS/src",
+        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp32/hardware/esp32/3.3.4/libraries/Network/src",
+        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp32/hardware/esp32/3.3.4/libraries/WebServer/src",
+        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp32/hardware/esp32/3.3.4/libraries/WiFi/src",
+        "D:/MyArduino/Projects/Libraries/HX711_Arduino_Library/src",
         "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-8410210c-v2/esp32/dio_qspi/include",
+        "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-8410210c-v2/esp32/include/**",
         "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp32/tools/esp32-arduino-libs/idf-release_v5.5-8410210c-v2/esp32/qio_qspi/include",
         "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp32/tools/esp-x32/2507/xtensa-esp-elf/include"
       ],
       "defines": [
+        "ARDUINO=10819",
         "ESP32",
         "ARDUINO_ARCH_ESP32",
         "ARDUINO_ESP32_THING"
@@ -26,7 +29,7 @@
       "compilerPath": "C:/Users/gmanw/AppData/Local/Arduino15/packages/esp32/tools/esp-x32/2507/bin/xtensa-esp32-elf-g++.exe",
       "cStandard": "c11",
       "cppStandard": "c++17",
-      "intelliSenseMode": "gcc-x64"
+      "intelliSenseMode": "windows-gcc-x64"
     }
   ]
 }

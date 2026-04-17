@@ -58,6 +58,8 @@
 #define NUM_SAMPLES         4       // Samples averaged per weight reading
                                     // At 10 SPS: 4 samples ≈ 400 ms per read
 #define READ_INTERVAL_MS    2000UL  // Milliseconds between weight updates
+#define TARE_SAMPLE_COUNT   100U    // Samples used when zeroing (tare)
+#define CAL_SAMPLE_COUNT    100U    // Samples used for calibration measurements
 
 // ============================================================
 // Web server

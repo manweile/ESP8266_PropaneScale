@@ -32,6 +32,66 @@ function Test-VidPid([object]$portObj, [string]$targetVid, [string]$targetPid) {
     return ($portVid -eq (Normalize-HexId $targetVid)) -and ($portPid -eq (Normalize-HexId $targetPid))
 }
 
+function Get-OrderedPortCandidates([string]$mode, [array]$allPorts) {
+    $ordered = New-Object System.Collections.ArrayList
+
+    function Add-Candidates([array]$matches) {
+        foreach ($m in @($matches)) {
+            if (-not $m) { continue }
+            $addr = $m.port.address
+            if (-not $addr) { continue }
+            if (-not ($ordered | Where-Object { $_.port.address -eq $addr })) {
+                [void]$ordered.Add($m)
+            }
+        }
+    }
+
+    if (($mode -eq "upload-usb") -or ($mode -eq "monitor-usb")) {
+        # Prefer SparkFun ESP32 Thing USB CDC UART first.
+        Add-Candidates ($allPorts | Where-Object { Test-VidPid $_ $sparkfunVid $sparkfunPid })
+
+        # Then prefer non-ESP-Prog USB serial adapters for direct USB uploads.
+        Add-Candidates ($allPorts | Where-Object {
+            ($_.port.properties.vid -or $_.port.properties.pid) -and -not (
+                (Test-VidPid $_ $espProgVid $espProgPidA) -or
+                (Test-VidPid $_ $espProgVid $espProgPidB)
+            )
+        })
+
+        Add-Candidates ($allPorts | Where-Object { $_.port.protocol_label -match "USB" })
+        Add-Candidates ($allPorts | Where-Object { $_.port.address -ne "COM1" })
+        Add-Candidates $allPorts
+    }
+    else {
+        # Prefer ESP-Prog (FTDI FT2232H) first.
+        Add-Candidates ($allPorts | Where-Object {
+            (Test-VidPid $_ $espProgVid $espProgPidA) -or
+            (Test-VidPid $_ $espProgVid $espProgPidB)
+        })
+
+        Add-Candidates ($allPorts | Where-Object { $_.port.properties.vid -or $_.port.properties.pid })
+        Add-Candidates ($allPorts | Where-Object { $_.port.protocol_label -match "USB" })
+        Add-Candidates ($allPorts | Where-Object { $_.port.address -ne "COM1" })
+        Add-Candidates $allPorts
+    }
+
+    return @($ordered)
+}
+
+function Stop-ArduinoMonitorProcesses {
+    $monitorProcs = Get-CimInstance Win32_Process |
+        Where-Object {
+            ($_.Name -match "^arduino-cli(\\.exe)?$") -and
+            ($_.CommandLine -match "\\smonitor(\\s|$)")
+        }
+
+    foreach ($p in @($monitorProcs)) {
+        if (-not $p.ProcessId) { continue }
+        Write-Host "Stopping existing monitor process PID=$($p.ProcessId) to free serial port..."
+        Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue
+    }
+}
+
 $boardListJson = arduino-cli board list --format json
 if (-not $boardListJson) {
     throw "Unable to read ports from arduino-cli board list"
@@ -43,55 +103,10 @@ if ($ports.Count -eq 0) {
     throw "No serial ports detected"
 }
 
-# Prefer ESP-Prog (FTDI FT2232H) VID/PID first, then generic USB serial with VID/PID,
-# then USB-labeled ports, then first available non-COM1 port, then first available.
-$selected = $ports |
-    Where-Object {
-        (Test-VidPid $_ $espProgVid $espProgPidA) -or
-        (Test-VidPid $_ $espProgVid $espProgPidB)
-    } |
-    Select-Object -First 1
-
+$orderedCandidates = Get-OrderedPortCandidates -mode $Mode -allPorts $ports
+$selected = $orderedCandidates | Select-Object -First 1
 if (-not $selected) {
-    $selected = $ports | Where-Object { $_.port.properties.vid -or $_.port.properties.pid } | Select-Object -First 1
-}
-if (-not $selected) {
-    $selected = $ports | Where-Object { $_.port.protocol_label -match "USB" } | Select-Object -First 1
-}
-if (-not $selected) {
-    $selected = $ports | Where-Object { $_.port.address -ne "COM1" } | Select-Object -First 1
-}
-if (-not $selected) {
-    $selected = $ports | Select-Object -First 1
-}
-
-if (($Mode -eq "upload-usb") -or ($Mode -eq "monitor-usb")) {
-    # Prefer SparkFun ESP32 Thing USB CDC UART first.
-    $selected = $ports |
-        Where-Object { Test-VidPid $_ $sparkfunVid $sparkfunPid } |
-        Select-Object -First 1
-
-    if (-not $selected) {
-        # Then prefer non-ESP-Prog USB serial adapters for direct USB uploads.
-        $selected = $ports |
-            Where-Object {
-                ($_.port.properties.vid -or $_.port.properties.pid) -and -not (
-                    (Test-VidPid $_ $espProgVid $espProgPidA) -or
-                    (Test-VidPid $_ $espProgVid $espProgPidB)
-                )
-            } |
-            Select-Object -First 1
-    }
-
-    if (-not $selected) {
-        $selected = $ports | Where-Object { $_.port.protocol_label -match "USB" } | Select-Object -First 1
-    }
-    if (-not $selected) {
-        $selected = $ports | Where-Object { $_.port.address -ne "COM1" } | Select-Object -First 1
-    }
-    if (-not $selected) {
-        $selected = $ports | Select-Object -First 1
-    }
+    throw "No candidate serial ports available"
 }
 
 $port = $selected.port.address
@@ -106,8 +121,33 @@ if (($Mode -eq "upload") -or ($Mode -eq "upload-usb")) {
         throw "SketchPath is required for upload mode"
     }
 
-    arduino-cli upload -p $port --fqbn $Fqbn --upload-property "upload.speed=$UploadSpeed" $SketchPath
-    exit $LASTEXITCODE
+    # Ensure no stale arduino-cli monitor instance keeps the serial port open.
+    Stop-ArduinoMonitorProcesses
+
+    $uploadTargets = @($selected)
+    if ($Mode -eq "upload-usb") {
+        $uploadTargets = @($orderedCandidates)
+    }
+
+    $attempt = 0
+    foreach ($candidate in $uploadTargets) {
+        $attempt++
+        $candidatePort = $candidate.port.address
+        Write-Host "Upload attempt $attempt on $candidatePort..."
+
+        arduino-cli upload -p $candidatePort --fqbn $Fqbn --upload-property "upload.speed=$UploadSpeed" $SketchPath
+        if ($LASTEXITCODE -eq 0) {
+            exit 0
+        }
+
+        if ($Mode -ne "upload-usb") {
+            exit $LASTEXITCODE
+        }
+
+        Write-Host "Upload failed on $candidatePort (exit=$LASTEXITCODE). Trying next candidate, if available..."
+    }
+
+    throw "Upload failed on all candidate ports for mode '$Mode'."
 }
 
 arduino-cli monitor -p $port --config "baudrate=$Baudrate"

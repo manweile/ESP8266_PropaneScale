@@ -16,7 +16,7 @@
  *   - Serial command interface at 115200 baud (type HELP)
  * Libraries required (install via Arduino Library Manager)
  *   - ESP32 Arduino core  (Board: "SparkFun ESP32 Thing")
- *   No third-party libraries needed beyond the ESP32 core.
+ *   - HX711 Arduino Library by Bogde
  * First-time setup
  *   1. Edit WIFI_SSID / WIFI_PASSWORD in config.h
  *   2. Flash firmware; open Serial Monitor at 115200 baud
@@ -31,7 +31,7 @@
 #include <math.h>
 
 #include "config.h"
-#include "HX711.h"
+#include <HX711.h>
 #include "webpage.h"
 
 // ── Forward declarations ──────────────────────────────────────────────────
@@ -65,6 +65,8 @@ struct RawSampleStats {
 
 static RawSampleStats captureRawSampleStats(uint8_t n);
 static long computeAdaptiveMinDeltaCounts(float noiseStdCounts);
+static uint8_t invalidFailThreshold(uint8_t n);
+static uint8_t zeroFailThreshold(uint8_t n);
 
 // ── Global objects ────────────────────────────────────────────────────────
 static HX711            scale;
@@ -145,7 +147,7 @@ static RawSampleStats captureRawSampleStats(uint8_t n) {
     long maxRaw = LONG_MIN;
 
     for (uint8_t i = 0; i < n; ++i) {
-        const long raw = scale.readRaw();
+        const long raw = scale.read();
         if (raw == LONG_MIN) {
             ++invalidCount;
             continue;
@@ -192,17 +194,35 @@ static long computeAdaptiveMinDeltaCounts(float noiseStdCounts) {
 }
 
 /**
+ * @brief Returns invalid sample count threshold that indicates failure.
+ * @details Uses ceil(n/2), matching prior behavior for 8 and 12 samples.
+ */
+static uint8_t invalidFailThreshold(uint8_t n) {
+    if (n == 0U) return 1U;
+    return static_cast<uint8_t>((n + 1U) / 2U);
+}
+
+/**
+ * @brief Returns zero sample count threshold that indicates failure.
+ * @details Uses n-1, matching prior behavior for 8 and 12 samples.
+ */
+static uint8_t zeroFailThreshold(uint8_t n) {
+    if (n <= 1U) return 1U;
+    return static_cast<uint8_t>(n - 1U);
+}
+
+/**
  * @brief Starts interactive manual calibration-factor mode over serial.
  * @param[in] {float} targetLbs Optional known target weight in pounds.
  */
 static void startManualCalFactor(float targetLbs) {
     Serial.println(F("[Scale] Manual calibration-factor mode start"));
     Serial.println(F("[Step 1/2] Remove all weight from the scale before starting."));
-    Serial.println(F("[Scale] Capturing tare (12 samples)..."));
+    Serial.printf("[Scale] Capturing tare (%u samples)...\n", static_cast<unsigned>(TARE_SAMPLE_COUNT));
 
-    scale.tare(12);
-    g_tareOffset = scale.getOffset();
-    scale.setOffset(g_tareOffset);
+    scale.tare(TARE_SAMPLE_COUNT);
+    g_tareOffset = scale.get_offset();
+    scale.set_offset(g_tareOffset);
     g_weightLbs = 0.0f;
 
     g_manualCalActive = true;
@@ -284,14 +304,14 @@ static void handleManualCalFactor() {
             changed = true;
         } else if (ch == 's' || ch == 'S') {
             g_manualCalActive = false;
-            scale.setScale(g_calFactor);
+            scale.set_scale(g_calFactor);
             saveCalibration();
             Serial.printf("[Scale] Manual calibration saved. factor=%.4f\n", g_calFactor);
             return;
         } else if (ch == 'q' || ch == 'Q') {
             g_manualCalActive = false;
             g_calFactor = g_manualCalStartFactor;
-            scale.setScale(g_calFactor);
+            scale.set_scale(g_calFactor);
             Serial.printf("[Scale] Manual calibration cancelled. Restored factor=%.4f\n", g_calFactor);
             return;
         } else {
@@ -303,7 +323,7 @@ static void handleManualCalFactor() {
         }
 
         if (changed) {
-            scale.setScale(g_calFactor);
+            scale.set_scale(g_calFactor);
             printManualCalFactorStatus();
             g_manualCalLastPrintMs = millis();
         }
@@ -429,7 +449,7 @@ static void runScaleStartupSelfCheck() {
     uint8_t invalidCount = 0U;
 
     for (uint8_t i = 0; i < samples; ++i) {
-        long raw = scale.readRaw();
+        long raw = scale.read();
         if (raw == LONG_MIN) {
             ++invalidCount;
             if (i == 0) {
@@ -483,27 +503,29 @@ static void runGuidedCalibration(float knownLbs) {
     }
     Serial.println(F("[Step 1/3] Complete: empty platform confirmed."));
 
-    Serial.println(F("[Step 2/3] Capturing tare (12 samples)..."));
-    scale.tare(12);
-    g_tareOffset = scale.getOffset();
+    Serial.printf("[Step 2/3] Capturing tare (%u samples)...\n", static_cast<unsigned>(TARE_SAMPLE_COUNT));
+    scale.tare(TARE_SAMPLE_COUNT);
+    g_tareOffset = scale.get_offset();
     Serial.printf("[Scale] New tare offset: %ld\n", g_tareOffset);
 
-    const RawSampleStats tareStats = captureRawSampleStats(8);
-    if (tareStats.invalidCount >= 4U) {
+    const RawSampleStats tareStats = captureRawSampleStats(TARE_SAMPLE_COUNT);
+    if (tareStats.invalidCount >= invalidFailThreshold(TARE_SAMPLE_COUNT)) {
         Serial.println(F("[Error] HX711 returned too many timeout samples during tare."));
         Serial.println(F("[Hint] Check HX711 wiring/power (DOUT/SCK/VCC/GND) and retry GUIDEDCAL."));
         return;
     }
-    if (tareStats.zeroCount >= 7U) {
+    if (tareStats.zeroCount >= zeroFailThreshold(TARE_SAMPLE_COUNT)) {
         Serial.println(F("[Error] HX711 tare samples are all zero (or nearly all zero)."));
         Serial.println(F("[Hint] DOUT may be stuck LOW / shorted, or A+/A- input is not connected correctly."));
         return;
     }
-    Serial.printf("[Scale] Tare check: avg=%ld span=%ld invalid=%u/8 zero=%u/8\n",
+    Serial.printf("[Scale] Tare check: avg=%ld span=%ld invalid=%u/%u zero=%u/%u\n",
                   tareStats.rawAvg,
                   tareStats.maxRaw - tareStats.minRaw,
                   static_cast<unsigned>(tareStats.invalidCount),
-                  static_cast<unsigned>(tareStats.zeroCount));
+                  static_cast<unsigned>(TARE_SAMPLE_COUNT),
+                  static_cast<unsigned>(tareStats.zeroCount),
+                  static_cast<unsigned>(TARE_SAMPLE_COUNT));
 
     Serial.println(F("[Step 2/3] Complete: tare captured."));
     Serial.println(F("[Step 3/3] Next: place known weight, then type NEXT and press ENTER."));
@@ -516,18 +538,18 @@ static void runGuidedCalibration(float knownLbs) {
     }
     Serial.println(F("[Step 3/3] Complete: known-weight sample acknowledged."));
 
-    const RawSampleStats stats = captureRawSampleStats(12);
+    const RawSampleStats stats = captureRawSampleStats(CAL_SAMPLE_COUNT);
     const long rawAvg = stats.rawAvg;
     const long delta = rawAvg - g_tareOffset;
     const float noiseStdCounts = stats.noiseStdCounts;
     const long minDeltaCounts = computeAdaptiveMinDeltaCounts(noiseStdCounts);
 
-    if (stats.invalidCount >= 6U) {
+    if (stats.invalidCount >= invalidFailThreshold(CAL_SAMPLE_COUNT)) {
         Serial.println(F("[Error] HX711 returned too many timeout samples with known weight."));
         Serial.println(F("[Hint] Sensor is not providing valid data. Check wiring/power and try again."));
         return;
     }
-    if (stats.zeroCount >= 11U) {
+    if (stats.zeroCount >= zeroFailThreshold(CAL_SAMPLE_COUNT)) {
         Serial.println(F("[Error] HX711 known-weight samples are all zero (or nearly all zero)."));
         Serial.println(F("[Hint] Check load-cell bridge wiring to HX711 A+/A- and ensure DOUT is not stuck low."));
         return;
@@ -536,20 +558,22 @@ static void runGuidedCalibration(float knownLbs) {
     const long deltaAbs = (delta >= 0L) ? delta : -delta;
     if (deltaAbs < minDeltaCounts) {
         Serial.printf("[Error] ADC delta too small for calibration (delta=%ld, min=%ld).\n", delta, minDeltaCounts);
-        Serial.printf("[Diag] Raw avg=%ld tare=%ld noise=%.1f invalid=%u/12 zero=%u/12\n",
+        Serial.printf("[Diag] Raw avg=%ld tare=%ld noise=%.1f invalid=%u/%u zero=%u/%u\n",
                       rawAvg, g_tareOffset, noiseStdCounts,
                       static_cast<unsigned>(stats.invalidCount),
-                      static_cast<unsigned>(stats.zeroCount));
+                  static_cast<unsigned>(CAL_SAMPLE_COUNT),
+                  static_cast<unsigned>(stats.zeroCount),
+                  static_cast<unsigned>(CAL_SAMPLE_COUNT));
         Serial.println(F("[Hint] Re-run guided calibration: tare with empty platform, then place known weight."));
         return;
     }
 
     g_calFactor = static_cast<float>(delta) / knownLbs;
-    scale.setOffset(g_tareOffset);
-    scale.setScale(g_calFactor);
+    scale.set_offset(g_tareOffset);
+    scale.set_scale(g_calFactor);
     saveCalibration();
 
-    const float verifyLbs = static_cast<float>(scale.getUnits(8));
+    const float verifyLbs = static_cast<float>(scale.get_units(CAL_SAMPLE_COUNT));
     const float errPct = ((verifyLbs - knownLbs) / knownLbs) * 100.0f;
 
     Serial.printf("[Scale] Raw avg: %ld  delta: %ld  noise std: %.1f counts\n", rawAvg, delta, noiseStdCounts);
@@ -655,10 +679,10 @@ static void handleApiData() {
  * @brief Handles HTTP POST /api/tare and performs tare operation.
  */
 static void handleApiTare() {
-    Serial.println(F("[Scale] Taring (8 samples)…"));
+    Serial.printf("[Scale] Taring (%u samples)...\n", static_cast<unsigned>(TARE_SAMPLE_COUNT));
 
-    scale.tare(8);
-    g_tareOffset = scale.getOffset();
+    scale.tare(TARE_SAMPLE_COUNT);
+    g_tareOffset = scale.get_offset();
     g_weightLbs  = 0.0f;
     saveCalibration();
 
@@ -686,17 +710,17 @@ static void handleApiCalibrate() {
         return;
     }
 
-    const RawSampleStats stats = captureRawSampleStats(12);
+    const RawSampleStats stats = captureRawSampleStats(CAL_SAMPLE_COUNT);
     long rawAvg = stats.rawAvg;
     long delta  = rawAvg - g_tareOffset;
     const long minDeltaCounts = computeAdaptiveMinDeltaCounts(stats.noiseStdCounts);
 
-    if (stats.invalidCount >= 6U) {
+    if (stats.invalidCount >= invalidFailThreshold(CAL_SAMPLE_COUNT)) {
         server.send(503, "application/json",
             "{\"success\":false,\"message\":\"HX711 timeout during calibration sampling. Check wiring/power and retry\"}");
         return;
     }
-    if (stats.zeroCount >= 11U) {
+    if (stats.zeroCount >= zeroFailThreshold(CAL_SAMPLE_COUNT)) {
         server.send(503, "application/json",
             "{\"success\":false,\"message\":\"HX711 samples are all zero. Check A+/A- bridge wiring and DOUT line\"}");
         return;
@@ -710,7 +734,7 @@ static void handleApiCalibrate() {
     }
 
     g_calFactor = static_cast<float>(delta) / knownLbs;
-    scale.setScale(g_calFactor);
+    scale.set_scale(g_calFactor);
     saveCalibration();
 
     Serial.printf("[Scale] New cal factor: %.4f  (%.3f lbs)\n", g_calFactor, knownLbs);
@@ -769,8 +793,8 @@ static void handleApiGuidedCalNext() {
     }
 
     if (g_guidedCal.step == GUIDED_WAIT_EMPTY_CONFIRM) {
-        scale.tare(12);
-        g_tareOffset = scale.getOffset();
+        scale.tare(TARE_SAMPLE_COUNT);
+        g_tareOffset = scale.get_offset();
         g_weightLbs = 0.0f;
         g_guidedCal.step = GUIDED_WAIT_WEIGHT_CONFIRM;
 
@@ -790,18 +814,18 @@ static void handleApiGuidedCalNext() {
     }
 
     if (g_guidedCal.step == GUIDED_WAIT_WEIGHT_CONFIRM) {
-        const RawSampleStats stats = captureRawSampleStats(12);
+        const RawSampleStats stats = captureRawSampleStats(CAL_SAMPLE_COUNT);
         const long rawAvg = stats.rawAvg;
         const long delta = rawAvg - g_tareOffset;
         const float noiseStdCounts = stats.noiseStdCounts;
         const long minDeltaCounts = computeAdaptiveMinDeltaCounts(noiseStdCounts);
 
-        if (stats.invalidCount >= 6U) {
+        if (stats.invalidCount >= invalidFailThreshold(CAL_SAMPLE_COUNT)) {
             server.send(503, "application/json",
                 "{\"success\":false,\"message\":\"HX711 timeout while reading known weight. Check wiring/power and retry\"}");
             return;
         }
-        if (stats.zeroCount >= 11U) {
+        if (stats.zeroCount >= zeroFailThreshold(CAL_SAMPLE_COUNT)) {
             server.send(503, "application/json",
                 "{\"success\":false,\"message\":\"HX711 known-weight samples are all zero. Check A+/A- bridge wiring and DOUT line\"}");
             return;
@@ -815,11 +839,11 @@ static void handleApiGuidedCalNext() {
         }
 
         g_calFactor = static_cast<float>(delta) / g_guidedCal.knownLbs;
-        scale.setOffset(g_tareOffset);
-        scale.setScale(g_calFactor);
+        scale.set_offset(g_tareOffset);
+        scale.set_scale(g_calFactor);
         saveCalibration();
 
-        const float verifyLbs = static_cast<float>(scale.getUnits(8));
+        const float verifyLbs = static_cast<float>(scale.get_units(CAL_SAMPLE_COUNT));
         const float errPct = ((verifyLbs - g_guidedCal.knownLbs) / g_guidedCal.knownLbs) * 100.0f;
 
         Serial.printf("[Scale] Web guided calibration done. factor=%.4f verify=%.3f err=%.2f%%\n", g_calFactor, verifyLbs, errPct);
@@ -935,12 +959,16 @@ static void handleSerialCommands() {
 
     if (cmd == F("TARE")) {
         // ── TARE — zero the scale ─────────────────────────────────────
-        Serial.println(F("[Scale] Taring (8 samples)…"));
-        scale.tare(8);
-        g_tareOffset = scale.getOffset();
+        Serial.printf("[Scale] Taring (%u samples)...\n", static_cast<unsigned>(TARE_SAMPLE_COUNT));
+        scale.tare(TARE_SAMPLE_COUNT);
+        g_tareOffset = scale.get_offset();
         g_weightLbs  = 0.0f;
         saveCalibration();
         Serial.printf("[Scale] Tare offset: %ld\n", g_tareOffset);
+        if (g_tareOffset == 0L) {
+            Serial.println(F("[Warn] Tare offset is zero — HX711 may be unresponsive or DOUT stuck LOW."));
+            Serial.println(F("[Hint] Check DOUT line state and load-cell bridge wiring (A+/A-/E+/E-)."));
+        }
 
     } else if (cmd.startsWith("CALIBRATE ")) {
         // ── CALIBRATE <lbs> — apply calibration with known weight ─────
@@ -949,17 +977,17 @@ static void handleSerialCommands() {
             Serial.println(F("[Error] Usage: CALIBRATE <weight_in_lbs>"));
             return;
         }
-        Serial.printf("[Scale] Reading raw average (12 samples) for %.2f lbs…\n", knownLbs);
-        const RawSampleStats stats = captureRawSampleStats(12);
+        Serial.printf("[Scale] Reading raw average (%u samples) for %.2f lbs...\n", static_cast<unsigned>(CAL_SAMPLE_COUNT), knownLbs);
+        const RawSampleStats stats = captureRawSampleStats(CAL_SAMPLE_COUNT);
         long rawAvg = stats.rawAvg;
         long delta  = rawAvg - g_tareOffset;
         const long minDeltaCounts = computeAdaptiveMinDeltaCounts(stats.noiseStdCounts);
-        if (stats.invalidCount >= 6U) {
+        if (stats.invalidCount >= invalidFailThreshold(CAL_SAMPLE_COUNT)) {
             Serial.println(F("[Error] HX711 timeout while sampling for CALIBRATE."));
             Serial.println(F("[Hint] Check wiring/power and retry. Use GUIDEDCAL for step-by-step diagnostics."));
             return;
         }
-        if (stats.zeroCount >= 11U) {
+        if (stats.zeroCount >= zeroFailThreshold(CAL_SAMPLE_COUNT)) {
             Serial.println(F("[Error] HX711 CALIBRATE samples are all zero (or nearly all zero)."));
             Serial.println(F("[Hint] Check load-cell bridge wiring (A+/A-/E+/E-) and DOUT line state."));
             return;
@@ -971,10 +999,10 @@ static void handleSerialCommands() {
             return;
         }
         g_calFactor = static_cast<float>(delta) / knownLbs;
-        scale.setScale(g_calFactor);
+        scale.set_scale(g_calFactor);
         saveCalibration();
         Serial.printf("[Scale] Cal factor: %.4f\n", g_calFactor);
-        Serial.printf("[Scale] Verification read: %.3f lbs\n", static_cast<float>(scale.getUnits(4)));
+        Serial.printf("[Scale] Verification read: %.3f lbs\n", static_cast<float>(scale.get_units(CAL_SAMPLE_COUNT)));
 
     } else if (cmd.startsWith("GUIDEDCAL ")) {
         // ── GUIDEDCAL <lbs> — interactive calibration wizard ──────────
@@ -1003,14 +1031,14 @@ static void handleSerialCommands() {
         // ── RESET — restore factory calibration defaults ──────────────
         g_calFactor  = DEFAULT_CAL_FACTOR;
         g_tareOffset = 0L;
-        scale.setScale(g_calFactor);
-        scale.setOffset(g_tareOffset);
+        scale.set_scale(g_calFactor);
+        scale.set_offset(g_tareOffset);
         saveCalibration();
         Serial.println(F("[Scale] Calibration reset to factory defaults."));
 
     } else if (cmd == F("RAW")) {
         // ── RAW — print a single raw ADC reading ─────────────────────
-        long raw24 = scale.readRaw();
+        long raw24 = scale.read();
         if (raw24 == LONG_MIN) {
             Serial.println(F("[Scale] Raw ADC: TIMEOUT (HX711 not ready within 1 s)"));
             return;
@@ -1019,7 +1047,7 @@ static void handleSerialCommands() {
 
     } else if (cmd == F("WEIGHT")) {
         // ── WEIGHT — print current weight ─────────────────────────────
-        float w = static_cast<float>(scale.getUnits(4));
+        float w = static_cast<float>(scale.get_units(4));
         Serial.printf("[Scale] Weight: %.3f lbs\n", w);
 
     } else if (cmd == F("STATUS")) {
@@ -1082,8 +1110,8 @@ void setup() {
 
     // Initialise HX711
     scale.begin(HX711_DOUT_PIN, HX711_SCK_PIN);
-    scale.setScale(g_calFactor);
-    scale.setOffset(g_tareOffset);
+    scale.set_scale(g_calFactor);
+    scale.set_offset(g_tareOffset);
     Serial.println(F("[Scale] HX711 initialised."));
     runScaleStartupSelfCheck();
 
@@ -1118,13 +1146,14 @@ void loop() {
     handleSerialCommands();
 
     if (g_manualCalActive) {
-        g_weightLbs = static_cast<float>(scale.getUnits(NUM_SAMPLES));
+        g_weightLbs = static_cast<float>(scale.get_units(NUM_SAMPLES));
         return;
     }
 
     // Periodic weight reading
     if (millis() - g_lastReadMs >= READ_INTERVAL_MS) {
-        g_weightLbs  = static_cast<float>(scale.getUnits(NUM_SAMPLES));
+        g_weightLbs  = static_cast<float>(scale.get_units(NUM_SAMPLES));
         g_lastReadMs = millis();
     }
 }
+

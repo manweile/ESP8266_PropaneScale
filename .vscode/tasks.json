@@ -137,7 +137,6 @@
         "-UploadSpeed",
         "${input:uploadSpeed}"
       ],
-      "dependsOn": "Arduino: Compile (ESP32 Thing)",
       "problemMatcher": []
     },
     {
@@ -158,7 +157,6 @@
         "-UploadSpeed",
         "${input:uploadSpeed}"
       ],
-      "dependsOn": "Arduino: Compile (ESP32 Thing)",
       "problemMatcher": []
     },
     {
